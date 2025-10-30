@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+// Importez useNavigate si vous prévoyez d'utiliser la navigation interne au lieu de window.location.reload()
+// import { useNavigate } from 'react-router-dom'; 
 
-const AuthentifierUtilisateur = ({ onLoginSuccess }) => {
-    
-    const API_URL = 'http://localhost/projet/back/api/authentifierUtilisateur.php'; 
+const AuthentifierUtilisateur = () => {
+
+    const API_URL = 'http://localhost/projet/back/api/authentifierUtilisateur.php';
+    const navigate = useNavigate(); // Décommentez si vous utilisez navigate
 
     const [formData, setFormData] = useState({
         email: '',
@@ -14,6 +17,9 @@ const AuthentifierUtilisateur = ({ onLoginSuccess }) => {
     const [message, setMessage] = useState('');
     const [errors, setErrors] = useState({});
     const [loading, setLoading] = useState(false);
+    
+    // 💡 CORRECTION 1 : Initialiser avec null
+    const [user, setUser] = useState(null); 
 
     // Gère les changements de champs
     const handleChange = (e) => {
@@ -39,27 +45,34 @@ const AuthentifierUtilisateur = ({ onLoginSuccess }) => {
         }
 
         try {
-            // Axios envoie par défaut en JSON si l'objet n'est pas FormData
             const response = await axios.post(API_URL, formData);
 
-            // Succès : Le backend doit renvoyer les données de l'utilisateur (y compris le rôle)
-            const userData = response.data.utilisateur; 
+            // Succès : Le backend doit renvoyer les données de l'utilisateur
+            const userData = response.data.utilisateur;
             const successMsg = response.data.message || "Connexion réussie !";
             
+            // Mettre à jour l'état (optionnel, mais bonne pratique)
+            setUser(userData); 
             setMessage(successMsg);
-            
-            // 💡 Appel de la fonction de succès pour mettre à jour l'état global de l'application
-            if (onLoginSuccess) {
-                 onLoginSuccess(userData);
-            }
 
+            // 💡 CORRECTION 2 : Déplacer la logique de persistance et de redirection ici
+            if (userData) { // Vérifier que l'objet utilisateur est valide
+                // 1. Sauvegarde dans le localStorage
+                localStorage.setItem('utilisateur', JSON.stringify(userData));
+                
+                setTimeout(() => {
+                    navigate('/')
+                    window.location.reload(); 
+                    // Si vous ne voulez pas recharger, utilisez navigate('/');
+                }, 1000); 
+            }
+            
         } catch (error) {
             console.error("Erreur de connexion:", error.response || error);
-            
+
             let errorMessage = "Erreur de serveur inconnue.";
             if (error.response && error.response.data && error.response.data.message) {
-                // Message d'erreur spécifique renvoyé par le PHP (ex: Email ou mot de passe incorrect)
-                errorMessage = error.response.data.message; 
+                errorMessage = error.response.data.message; // Message d'erreur spécifique du PHP
             } else if (error.request) {
                 errorMessage = "Impossible de contacter le serveur API. Le serveur est-il démarré ?";
             }
@@ -69,10 +82,10 @@ const AuthentifierUtilisateur = ({ onLoginSuccess }) => {
             setLoading(false);
         }
     };
-
     // --- Rendu du Formulaire ---
     return (
         <div className="flex justify-center items-center min-h-screen bg-gray-100 p-4">
+            {/* ... (Reste du JSX inchangé) ... */}
             <div className="w-full max-w-sm bg-white p-8 rounded-lg shadow-xl">
                 <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">
                     Se Connecter
@@ -91,7 +104,6 @@ const AuthentifierUtilisateur = ({ onLoginSuccess }) => {
                 )}
 
                 <form onSubmit={handleSubmit} className="space-y-4">
-                    
                     {/* Email */}
                     <div>
                         <label htmlFor="email" className="block text-sm font-medium text-gray-700">Adresse Email</label>
@@ -101,7 +113,6 @@ const AuthentifierUtilisateur = ({ onLoginSuccess }) => {
                             name="email"
                             value={formData.email}
                             onChange={handleChange}
-                            //required
                             className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                             placeholder="votre.email@example.com"
                         />
@@ -116,7 +127,6 @@ const AuthentifierUtilisateur = ({ onLoginSuccess }) => {
                             name="motDePasse"
                             value={formData.motDePasse}
                             onChange={handleChange}
-                            //required
                             className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
                             placeholder="Mot de passe"
                         />

@@ -1,10 +1,14 @@
+
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import axios from 'axios'; // ⬅️ N'oubliez pas d'installer : npm install axios
+import { Link, useNavigate } from 'react-router-dom'; // ⬅️ N'oubliez pas d'importer useNavigate
+import axios from 'axios';
 
 const InscrireUtilisateur = () => {
     // URL de votre script PHP d'inscription
-    const API_URL = 'http://localhost/projet/back/api/inscrireUtilisateur.php'; 
+    const API_URL = 'http://localhost/projet/back/api/inscrireUtilisateur.php';
+
+    // Utilisez useNavigate pour la redirection
+    const navigate = useNavigate();
 
     const [formData, setFormData] = useState({
         nomComplet: '',
@@ -18,6 +22,9 @@ const InscrireUtilisateur = () => {
     const [errors, setErrors] = useState({});
     const [message, setMessage] = useState('');
     const [loading, setLoading] = useState(false);
+
+    // 💡 CORRECTION : Initialisez avec un objet ou null, pas un tableau
+    const [user, setUser] = useState(null);
 
     // Gère les changements dans les champs de texte et le sélecteur
     const handleChange = (e) => {
@@ -39,8 +46,8 @@ const InscrireUtilisateur = () => {
     // 🆕 Gère la soumission et l'envoi via Axios
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setMessage(''); // Réinitialiser les messages
-        setErrors({}); // Réinitialiser les erreurs
+        setMessage('');
+        setErrors({});
         setLoading(true);
 
         // 1. Validation front-end
@@ -56,7 +63,7 @@ const InscrireUtilisateur = () => {
         dataToSend.append('email', formData.email);
         dataToSend.append('motDePasse', formData.motDePasse);
         dataToSend.append('role', formData.role);
-        
+
         // La spécialité n'est requise que pour les formateurs
         if (formData.role === 'formateur' && formData.specialite) {
             dataToSend.append('specialite', formData.specialite);
@@ -66,29 +73,47 @@ const InscrireUtilisateur = () => {
         if (formData.photo) {
             dataToSend.append('photo', formData.photo);
         }
-        
+
         // 3. Envoi de la requête via Axios
         try {
             const response = await axios.post(API_URL, dataToSend, {
                 headers: {
-                    // Axios va gérer lui-même le Content-Type: multipart/form-data
-                    // y compris la boundary nécessaire pour les fichiers.
-                    'Content-Type': 'multipart/form-data' 
+                    'Content-Type': 'multipart/form-data'
                 }
             });
 
-            // Gérer le succès (statut 201 Created ou 200 OK)
-            setMessage(response.data.message || "Inscription réussie ! Vous pouvez vous connecter.");
-            setFormData({ // Optionnel : Réinitialiser le formulaire
+            // L'objet utilisateur complet vient du backend PHP
+            const userData = response.data.utilisateur;
+
+            // 💡 CORRECTION : Mettre à jour l'état React.
+            setUser(userData);
+
+            // 💡 CORRECTION MAJEURE : Utiliser l'objet DIRECTEMENT pour le localStorage
+            if (userData) {
+                // 1. Sauvegarde dans le localStorage
+                localStorage.setItem('utilisateur', JSON.stringify(userData));
+
+                // 2. Affichage d'un message de succès (optionnel)
+                setMessage(response.data.message || "Inscription réussie ! Redirection...");
+
+                setTimeout(() => {
+                    navigate('/')
+                    window.location.reload();
+                    // Si vous ne voulez pas recharger, utilisez navigate('/')
+                }, 1000);
+            }
+
+            // Réinitialiser le formulaire
+            setFormData({
                 nomComplet: '', email: '', motDePasse: '', photo: null, specialite: '', role: 'etudiant',
             });
 
         } catch (error) {
             // Gérer les erreurs (400 Bad Request, 409 Conflict, 500 Server Error)
             console.error("Erreur d'inscription:", error.response || error);
-            
+
             let errorMessage = "Une erreur inconnue est survenue.";
-            
+
             if (error.response && error.response.data && error.response.data.message) {
                 errorMessage = error.response.data.message; // Message venant du PHP
             } else if (error.request) {
@@ -101,7 +126,6 @@ const InscrireUtilisateur = () => {
         }
     };
 
-    // --- Rendu du Formulaire ---
     return (
         <div className="flex justify-center items-center min-h-screen bg-gray-100 p-4">
             <div className="w-full max-w-md bg-white p-8 rounded-lg shadow-xl">
@@ -122,9 +146,9 @@ const InscrireUtilisateur = () => {
                 )}
 
                 <form onSubmit={handleSubmit} className="space-y-4">
-                    
+
                     {/* ... (Reste du formulaire inchangé, seul l'onChange de la photo a été adapté pour utiliser handleFileChange) ... */}
-                    
+
                     {/* Nom Complet */}
                     <div>
                         <label htmlFor="nomComplet" className="block text-sm font-medium text-gray-700">Nom Complet</label>
@@ -178,7 +202,7 @@ const InscrireUtilisateur = () => {
                             id="photo"
                             name="photo"
                             accept="image/*"
-                            onChange={handleFileChange} 
+                            onChange={handleFileChange}
                             className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
                         />
                     </div>

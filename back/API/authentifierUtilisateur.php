@@ -92,7 +92,7 @@ try {
             $utilisateur = [
                 "id_utilisateur" => $row['id_utilisateur'],
                 // Assurez-vous que les clés correspondent aux colonnes réelles de votre BD
-                "nom_complet" => $row['nom_complet'] ?? $row['prenom'] . ' ' . $row['nom'], 
+                "nom_complet" => $row['nom_complet'], 
                 "email" => $row['email'],
                 "role" => $row['role'],
                 "photo" =>$row['photo'],
@@ -103,6 +103,7 @@ try {
                 "message" => "Connexion réussie !",
                 "utilisateur" => $utilisateur
             ]);
+            
         } else {
             // Mot de passe incorrect
             http_response_code(401); // Unauthorized
